@@ -25,6 +25,11 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - run: npm ci
       - run: npm run build
       - run: npm test
