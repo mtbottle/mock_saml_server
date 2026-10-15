@@ -232,15 +232,21 @@ A ready-to-serve `metadata.xml` (and `idp-cert.pem`) for this project's Pages
 URL is committed, so you can point your SP at:
 
 ```
-https://mtbottle.github.io/mock_saml_server/metadata.xml
+https://michtran.ca/mock_saml_server/metadata.xml
 ```
+
+> **Custom domain:** if the GitHub account (or repo) uses a custom domain,
+> `*.github.io` 301-redirects to it. The IdP's entity ID/issuer is derived from
+> the URL the app is actually loaded from, so the metadata must advertise the
+> **canonical (redirect target) domain** — here `michtran.ca` — or SPs that
+> validate the issuer (most do, Sentry included) will reject the response.
 
 The app's default **IdP Entity ID** (the page URL) and **SSO URL** (the page URL
 + `sso`) are derived from its own location, so they match the committed metadata
 out of the box.
 
-If you rename the repo, move it to a different owner, or serve it from a custom
-domain, regenerate the metadata for the new URL:
+If you rename the repo, move it to a different owner, serve it from a custom
+domain, or change domains, regenerate the metadata for the canonical URL:
 
 ```bash
 SSO_URL=https://new-url/sso IDP_ENTITY_ID=https://new-url/ npm run gen:metadata

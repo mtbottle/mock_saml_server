@@ -12,9 +12,9 @@
     <script>
       (function () {
         var url = new URL(window.location.href);
-        var next = url.pathname.replace(/\/sso\/(index\.html)?$/, "/");
-        if (next !== url.pathname) {
-          url.pathname = next;
+        var path = url.pathname.replace(/\/index\.html$/, "/").replace(/\/sso\/?$/, "/");
+        if (path !== url.pathname) {
+          url.pathname = path;
           window.location.replace(url.toString());
         }
       })();
