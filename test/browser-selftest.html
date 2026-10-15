@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>browser selftest</title>
+</head>
+<body>
+<pre id="out">running…</pre>
+<script type="module">
+import * as S from "../saml.js";
+import { xmldsig } from "../vendor.js";
+
+const log = [];
+let failed = 0;
+const check = (name, cond, detail = "") => {
+  if (!cond) failed++;
+  log.push(`[${cond ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+};
+
+try {
+  const key = await S.generateKeyMaterial("Browser Test");
+  check("generateKeyMaterial returns cert", key.certificatePem.includes("BEGIN CERTIFICATE"));
+  check("thumbprint present", /^[0-9a-f]{64}$/.test(key.thumbprint));
+
+  const config = {
+    idpEntityId: "https://idp.test/entityid",
+    ssoUrl: "https://idp.test/sso",
+    spAcsUrl: "https://sp.test/saml/acs",
+    spEntityId: "https://sp.test/saml/metadata",
+    nameIdFormat: S.NAMEID_FORMATS.persistent,
+    authnContextClassRef: S.AUTHN_CONTEXT.pwdProtectedTransport,
+    signAssertion: true,
+    signResponse: true,
+    assertionTtlSeconds: 300,
+    sessionTtlSeconds: 3600,
+  };
+  const user = {
+    nameId: "user@example.com",
+    nameIdFormat: S.NAMEID_FORMATS.emailAddress,
+    acsUrl: config.spAcsUrl,
+    audience: config.spEntityId,
+    attributes: { email: "user@example.com", groups: ["admins", "users"] },
+  };
+
+  const r = await S.buildSamlResponse({ config, keyMaterial: key, user, request: null });
+  const sigCount = (r.xml.match(/<ds:Signature[\s>]/g) || []).length;
+  check("builds 2 signatures (assertion + response)", sigCount === 2, `got ${sigCount}`);
+
+  const doc = xmldsig.Parse(r.xml);
+  const sigs = [...doc.getElementsByTagNameNS(S.NS.ds, "Signature")];
+  let allOk = sigs.length > 0;
+  for (const node of sigs) {
+    const sx = new xmldsig.SignedXml(doc);
+    sx.LoadXml(node);
+    try {
+      allOk = (await sx.Verify()) && allOk;
+    } catch (err) {
+      allOk = false;
+      log.push("verify error: " + err.message);
+    }
+  }
+  check("xmldsigjs verifies both signatures", allOk);
+
+  // Metadata
+  const md = S.buildMetadataXml({ config, keyMaterial: key });
+  check("metadata contains certificate", md.includes(key.certificateBase64));
+
+  // DecompressionStream round-trip
+  const xml = `<samlp:AuthnRequest xmlns:samlp="${S.NS.samlp}"/>`;
+  const deflated = await new Response(
+    new Blob([new TextEncoder().encode(xml)]).stream().pipeThrough(new CompressionStream("deflate-raw"))
+  ).arrayBuffer();
+  const decoded = await S.decodeSamlMessage(S.bytesToBase64(new Uint8Array(deflated)));
+  check("decompresses raw-deflate SAMLRequest", decoded === xml);
+} catch (err) {
+  failed++;
+  log.push("FATAL: " + err.message);
+  log.push(err.stack || "");
+}
+
+document.getElementById("out").textContent =
+  (failed === 0 ? "ALL PASSED" : `${failed} FAILED`) + "\n" + log.join("\n");
+</script>
+</body>
+</html>

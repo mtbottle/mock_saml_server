@@ -1,0 +1,25 @@
+{
+  "name": "mock-saml-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A static (client-side) mock SAML 2.0 Identity Provider for integration testing, hostable on GitHub Pages.",
+  "scripts": {
+    "build": "esbuild src/vendor-entry.js --bundle --format=esm --minify --target=es2020 --outfile=vendor.js",
+    "build:dev": "esbuild src/vendor-entry.js --bundle --format=esm --target=es2020 --outfile=vendor.js",
+    "gen:key": "node scripts/gen-idp-key.mjs",
+    "gen:metadata": "node scripts/gen-static.mjs",
+    "test": "node test/verify-node.mjs",
+    "serve": "python3 -m http.server 8080"
+  },
+  "dependencies": {
+    "@peculiar/x509": "^2.1.0",
+    "reflect-metadata": "^0.2.2",
+    "xmldsigjs": "^2.8.8"
+  },
+  "devDependencies": {
+    "@xmldom/xmldom": "^0.9.12",
+    "esbuild": "^0.28.2",
+    "xml-crypto": "^6.4.0"
+  }
+}

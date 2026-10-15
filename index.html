@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mock SAML IdP</title>
+<meta name="description" content="A static, client-side mock SAML 2.0 Identity Provider for integration testing." />
+<link rel="stylesheet" href="./styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128273;</text></svg>" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">&#128273;</span>
+    <div>
+      <h1>Mock SAML IdP</h1>
+      <p class="tagline">Static, client-side SAML 2.0 Identity Provider for integration testing</p>
+    </div>
+  </div>
+  <div class="key-status" id="key-status">loading keys…</div>
+</header>
+
+<div id="warning" class="banner banner-warn" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<nav class="tabs">
+  <button data-tab="signin" class="active">Sign in</button>
+  <button data-tab="config">Configuration</button>
+  <button data-tab="metadata">Metadata</button>
+  <button data-tab="certificate">Certificate</button>
+  <button data-tab="about">About</button>
+</nav>
+
+<main>
+
+  <!-- ===================== SIGN IN ===================== -->
+  <section id="tab-signin" class="tab-panel active">
+    <div id="request-banner" class="banner banner-info" hidden></div>
+
+    <form id="signin-form" class="card" autocomplete="off">
+      <h2>SAML IdP Login</h2>
+      <p class="muted">This simulates the IdP login screen. Fill in the assertions you want the SP to receive, then post the signed response.</p>
+
+      <div class="grid two">
+        <label>NameID / Username
+          <input id="nameid" type="text" value="user@example.com" required />
+        </label>
+        <label>NameID Format
+          <select id="nameid-format"></select>
+        </label>
+      </div>
+
+      <div class="grid three">
+        <label>Email
+          <input id="email" type="email" value="user@example.com" />
+        </label>
+        <label>First name
+          <input id="first-name" type="text" value="Ada" />
+        </label>
+        <label>Last name
+          <input id="last-name" type="text" value="Lovelace" />
+        </label>
+      </div>
+
+      <div class="grid two">
+        <label>Roles / groups <span class="muted">(comma separated)</span>
+          <input id="roles" type="text" value="user" />
+        </label>
+        <label>Session duration (seconds)
+          <input id="session-ttl" type="number" min="60" step="60" value="3600" />
+        </label>
+      </div>
+
+      <h3>Additional attributes</h3>
+      <div id="attribute-list" class="attr-list"></div>
+      <button type="button" id="add-attribute" class="btn btn-ghost small">+ Add attribute</button>
+
+      <h3>Target</h3>
+      <div class="grid two">
+        <label>SP ACS URL <span class="muted">(Assertion Consumer Service)</span>
+          <input id="acs-url" type="url" placeholder="https://sp.example.com/saml/acs" />
+        </label>
+        <label>Audience / SP Entity ID
+          <input id="audience" type="url" placeholder="https://sp.example.com/saml/metadata" />
+        </label>
+      </div>
+      <div class="grid two">
+        <label>RelayState <span class="muted">(passed back untouched)</span>
+          <input id="relay-state" type="text" placeholder="optional" />
+        </label>
+        <label>InResponseTo <span class="muted">(from the AuthnRequest)</span>
+          <input id="in-response-to" type="text" placeholder="auto-filled" />
+        </label>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" id="submit-post">Sign in &amp; POST response</button>
+        <button type="button" class="btn" id="preview">Generate &amp; preview</button>
+      </div>
+    </form>
+
+    <div id="result" class="card" hidden>
+      <div class="result-head">
+        <h2>Generated SAML Response</h2>
+        <span id="result-summary" class="pill"></span>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="post-again">POST to ACS</button>
+        <button type="button" class="btn" id="download-response">Download XML</button>
+        <button type="button" class="btn" id="download-base64">Download base64</button>
+        <button type="button" class="btn" id="copy-base64">Copy base64</button>
+        <button type="button" class="btn" id="verify-response">Verify signature</button>
+        <button type="button" class="btn btn-ghost" id="toggle-pretty">Toggle pretty</button>
+      </div>
+      <div id="verify-result" class="banner" hidden></div>
+      <h3>SAMLResponse (base64)</h3>
+      <textarea id="response-base64" readonly rows="5" spellcheck="false"></textarea>
+      <h3>SAML Response (XML)</h3>
+      <pre id="response-xml" class="code"></pre>
+    </div>
+  </section>
+
+  <!-- ===================== CONFIG ===================== -->
+  <section id="tab-config" class="tab-panel">
+    <form id="config-form" class="card">
+      <h2>Identity Provider configuration</h2>
+      <div class="grid two">
+        <label>IdP Entity ID
+          <input id="cfg-idp-entity" type="text" />
+        </label>
+        <label>IdP SSO URL
+          <input id="cfg-sso-url" type="url" />
+        </label>
+      </div>
+      <div class="grid two">
+        <label>Default ACS URL
+          <input id="cfg-acs-url" type="url" />
+        </label>
+        <label>Default Audience / SP Entity ID
+          <input id="cfg-sp-entity" type="text" />
+        </label>
+      </div>
+      <div class="grid three">
+        <label>NameID Format
+          <select id="cfg-nameid-format"></select>
+        </label>
+        <label>AuthnContext Class
+          <select id="cfg-authn-context"></select>
+        </label>
+        <label>Display name
+          <input id="cfg-display-name" type="text" />
+        </label>
+      </div>
+      <div class="grid three">
+        <label>Assertion TTL (s)
+          <input id="cfg-assertion-ttl" type="number" min="30" step="30" />
+        </label>
+        <label>Session TTL (s)
+          <input id="cfg-session-ttl" type="number" min="60" step="60" />
+        </label>
+        <label>POST target
+          <select id="cfg-post-target">
+            <option value="_self">Same window (_self)</option>
+            <option value="_blank">New window (_blank)</option>
+          </select>
+        </label>
+      </div>
+      <div class="checks">
+        <label class="check"><input id="cfg-sign-assertion" type="checkbox" /> Sign the assertion (recommended)</label>
+        <label class="check"><input id="cfg-sign-response" type="checkbox" /> Sign the response</label>
+        <label class="check"><input id="cfg-want-signed" type="checkbox" /> Require signed AuthnRequests (metadata only)</label>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Save configuration</button>
+        <button type="button" class="btn btn-ghost" id="reset-config">Reset to defaults</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ===================== METADATA ===================== -->
+  <section id="tab-metadata" class="tab-panel">
+    <div class="card">
+      <h2>IdP Metadata (SAML 2.0)</h2>
+      <p class="muted">Point your SP at this metadata. Because this is a static site, host the downloaded file yourself (e.g. commit <code>metadata.xml</code> next to <code>index.html</code>) to get a stable URL.</p>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="download-metadata">Download metadata.xml</button>
+        <button type="button" class="btn" id="copy-metadata">Copy metadata</button>
+        <button type="button" class="btn btn-ghost" id="refresh-metadata">Refresh</button>
+      </div>
+      <pre id="metadata-xml" class="code"></pre>
+    </div>
+  </section>
+
+  <!-- ===================== CERTIFICATE ===================== -->
+  <section id="tab-certificate" class="tab-panel">
+    <div class="card">
+      <h2>Signing certificate &amp; key</h2>
+      <div id="cert-info" class="kv"></div>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="download-cert">Download certificate (PEM)</button>
+        <button type="button" class="btn" id="copy-cert">Copy certificate</button>
+        <button type="button" class="btn btn-ghost" id="regen-keys">Regenerate key pair</button>
+        <button type="button" class="btn btn-ghost" id="use-demo-key">Use bundled demo key</button>
+      </div>
+      <h3>X.509 certificate (PEM)</h3>
+      <pre id="cert-pem" class="code"></pre>
+      <h3>Public key (SPKI, PEM)</h3>
+      <pre id="pubkey-pem" class="code"></pre>
+    </div>
+  </section>
+
+  <!-- ===================== ABOUT ===================== -->
+  <section id="tab-about" class="tab-panel">
+    <div class="card">
+      <h2>About</h2>
+      <p>This is a fully client-side mock SAML 2.0 Identity Provider. It can:</p>
+      <ul>
+        <li>Accept an SP-initiated <code>AuthnRequest</code> (HTTP-Redirect binding) and parse the ACS URL, issuer and <code>InResponseTo</code>.</li>
+        <li>Generate signed SAML <code>Response</code>/<code>Assertion</code> payloads (RSA-SHA256, exclusive c14n, enveloped).</li>
+        <li>Produce IdP metadata and a self-signed X.509 signing certificate.</li>
+      </ul>
+      <p class="muted">Keys and configuration are stored only in your browser's <code>localStorage</code>. Nothing is sent anywhere except to the ACS URL you configure.</p>
+      <p class="muted">Signatures are produced with <a href="https://github.com/PeculiarVentures/xmldsigjs" target="_blank" rel="noreferrer">xmldsigjs</a> and certificates with <a href="https://github.com/PeculiarVentures/x509" target="_blank" rel="noreferrer">@peculiar/x509</a>.</p>
+      <p class="muted"><strong>Not for production.</strong> The bundled demo private key is public. This tool is for local integration testing only.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <span>Mock SAML IdP &middot; static &middot; no backend</span>
+</footer>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
