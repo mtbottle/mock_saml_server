@@ -15,7 +15,7 @@ function defaultConfig() {
   const base = location.origin + location.pathname.replace(/index\.html$/, "");
   return {
     idpEntityId: base,
-    ssoUrl: base,
+    ssoUrl: base + "sso",
     spAcsUrl: "",
     spEntityId: "",
     nameIdFormat: S.NAMEID_FORMATS.persistent,

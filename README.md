@@ -95,13 +95,18 @@ Tabs are also addressable via the URL hash, e.g. `#config`, `#metadata`,
 
 ### SP-initiated login (start at your SP)
 
-1. In your SP's SAML settings, set the **IdP SSO URL** to the hosted page URL
-   (e.g. `https://<owner>.github.io/<repo>/`).
+1. In your SP's SAML settings, set the **IdP SSO URL** to the `/sso` endpoint
+   (e.g. `https://<owner>.github.io/<repo>/sso`).
 2. When you click "Sign in with SAML" on the SP, it redirects the browser to:
 
    ```
-   https://<owner>.github.io/<repo>/?SAMLRequest=<deflate+base64>&RelayState=...
+   https://<owner>.github.io/<repo>/sso?SAMLRequest=<deflate+base64>&RelayState=...
    ```
+
+   The `/sso` page is a tiny static callback that forwards to the app
+   (`…/<repo>/`), preserving the query string — GitHub Pages can't run server
+   routes, so this is how the endpoint is mocked. The app root also accepts
+   `?SAMLRequest=…` directly.
 
 3. The app decodes the `AuthnRequest` and shows a banner with the detected
    **SP Entity ID**, **ACS URL** and **InResponseTo**, pre-filling the form.
@@ -127,17 +132,17 @@ There are two ways to wire the SP to this IdP.
 
 ### Option A — use the metadata (recommended)
 
-Give the SP the metadata URL, if you deployed with the included workflow:
+Give the SP the metadata URL:
 
 ```
 https://<owner>.github.io/<repo>/metadata.xml
 ```
 
-The metadata points the SP at the SSO URL and includes the public signing
-certificate, so no separate certificate copy-paste is needed.
+The metadata points the SP at the `/sso` endpoint and includes the public
+signing certificate, so no separate certificate copy-paste is needed.
 
-If you're not using the workflow, open the **Metadata** tab and **Download
-metadata.xml**, host it yourself, and point the SP at it.
+You can also open the **Metadata** tab to preview it, **Download metadata.xml**,
+host it yourself, and point the SP at it.
 
 ### Option B — configure manually
 
@@ -146,7 +151,7 @@ Provide these values in the SP:
 | Setting | Value |
 | --- | --- |
 | IdP Entity ID / Issuer | The page base URL, e.g. `https://<owner>.github.io/<repo>/` (or whatever you set in **Configuration**). |
-| IdP SSO URL | The page URL, e.g. `https://<owner>.github.io/<repo>/` |
+| IdP SSO URL | The `/sso` endpoint, e.g. `https://<owner>.github.io/<repo>/sso` |
 | IdP Certificate | The PEM from the **Certificate** tab (or `idp-cert.pem`). |
 | ACS URL | Your SP's assertion consumer endpoint (entered in the app). |
 | Audience / SP Entity ID | Your SP's entity ID (entered in the app). |
@@ -196,7 +201,7 @@ All attribute values are emitted as `xsi:type="xs:string"`.
 | Field | Meaning | Default |
 | --- | --- | --- |
 | **IdP Entity ID** | Issuer / entityID of this IdP. | page URL |
-| **IdP SSO URL** | SSO endpoint advertised in metadata (the page URL). | page URL |
+| **IdP SSO URL** | SSO endpoint advertised in metadata (`/sso` callback). | page URL + `sso` |
 | **Default ACS URL** | Where to POST if the request/field doesn't specify one. | empty |
 | **Default Audience / SP Entity ID** | Default audience/issuer expected by the SP. | empty |
 | **NameID Format** | Default NameID format. | `persistent` |
@@ -230,14 +235,15 @@ URL is committed, so you can point your SP at:
 https://mtbottle.github.io/mock_saml_server/metadata.xml
 ```
 
-The app's default **IdP Entity ID** and **SSO URL** are derived from its own page
-URL, so they match the committed metadata out of the box.
+The app's default **IdP Entity ID** (the page URL) and **SSO URL** (the page URL
++ `sso`) are derived from its own location, so they match the committed metadata
+out of the box.
 
 If you rename the repo, move it to a different owner, or serve it from a custom
 domain, regenerate the metadata for the new URL:
 
 ```bash
-SSO_URL=https://new-url/ IDP_ENTITY_ID=https://new-url/ npm run gen:metadata
+SSO_URL=https://new-url/sso IDP_ENTITY_ID=https://new-url/ npm run gen:metadata
 ```
 
 > Prefer GitHub Actions instead of branch deploy? Add `.github/workflows/`
@@ -307,6 +313,7 @@ key** to switch back. Regenerate the committed key with `npm run gen:key`.
 
 ```
 index.html          UI
+sso/index.html      /sso callback endpoint (forwards to the app)
 styles.css          styles
 app.js              UI logic, routing, HTTP-POST
 saml.js             SAML XML building, signing, metadata, AuthnRequest parsing

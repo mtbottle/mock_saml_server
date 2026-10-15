@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mock SAML IdP — SSO endpoint</title>
+    <!--
+      Static "/sso" callback endpoint. GitHub Pages cannot run server code, so
+      this page just forwards the browser to the app while preserving the query
+      string (SAMLRequest / RelayState), where the AuthnRequest is processed.
+    -->
+    <script>
+      (function () {
+        var url = new URL(window.location.href);
+        var next = url.pathname.replace(/\/sso\/(index\.html)?$/, "/");
+        if (next !== url.pathname) {
+          url.pathname = next;
+          window.location.replace(url.toString());
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <p>
+      Redirecting to the mock IdP&hellip;
+      <a id="continue" href="../">Continue</a>
+    </p>
+    <script>
+      var link = document.getElementById("continue");
+      link.href = "../" + window.location.search + window.location.hash;
+    </script>
+  </body>
+</html>
