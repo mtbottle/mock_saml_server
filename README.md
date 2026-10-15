@@ -214,24 +214,35 @@ SPs.
 ## Deploying to GitHub Pages
 
 Everything needed at runtime is static and committed (including the pre-built
-`vendor.js`), so you can simply publish the repo root with *Settings → Pages →
-Deploy from a branch*.
+`vendor.js`), so you publish the repo root directly:
 
-To also get a stable `metadata.xml` / `idp-cert.pem` at your Pages URL, use the
-included workflow (`.github/workflows/pages.yml`). On every push to `main` it
-builds `vendor.js`, runs the tests, generates `metadata.xml` for the Pages URL,
-and deploys the static files. It uploads:
+1. Push to `main`.
+2. **Settings → Pages → Build and deployment → Source = "Deploy from a branch"**,
+   then select **Branch: `main`** and **Folder: `/ (root)`** and save.
+
+The `.nojekyll` file is included so the files are served as-is. After a minute
+the site is at `https://<owner>.github.io/<repo>/`.
+
+A ready-to-serve `metadata.xml` (and `idp-cert.pem`) for this project's Pages
+URL is committed, so you can point your SP at:
 
 ```
-index.html app.js saml.js styles.css vendor.js
-idp-key.json idp-cert.pem metadata.xml .nojekyll
+https://mtbottle.github.io/mock_saml_server/metadata.xml
 ```
 
-Generate the static files locally too:
+The app's default **IdP Entity ID** and **SSO URL** are derived from its own page
+URL, so they match the committed metadata out of the box.
+
+If you rename the repo, move it to a different owner, or serve it from a custom
+domain, regenerate the metadata for the new URL:
 
 ```bash
-SSO_URL=https://<owner>.github.io/<repo>/ npm run gen:metadata
+SSO_URL=https://new-url/ IDP_ENTITY_ID=https://new-url/ npm run gen:metadata
 ```
+
+> Prefer GitHub Actions instead of branch deploy? Add `.github/workflows/`
+> back and enable **Source = "GitHub Actions"** — Pages must be enabled in the
+> repo settings first (the workflow cannot create the Pages site on its own).
 
 ## Testing
 
