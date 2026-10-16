@@ -44,7 +44,6 @@
       <div class="grid two">
         <label>NameID / Username
           <input id="nameid" type="text" value="user@example.com" required />
-          <span class="attr-hint">&rarr; released as <code>&lt;saml:NameID&gt;</code> and attribute <code>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier</code></span>
         </label>
         <label>NameID Format
           <select id="nameid-format"></select>
@@ -54,28 +53,27 @@
       <div class="grid three">
         <label>Email
           <input id="email" type="email" value="user@example.com" />
-          <span class="attr-hint">&rarr; <code>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress</code></span>
         </label>
         <label>First name
           <input id="first-name" type="text" value="Ada" />
-          <span class="attr-hint">&rarr; <code>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname</code></span>
         </label>
         <label>Last name
           <input id="last-name" type="text" value="Lovelace" />
-          <span class="attr-hint">&rarr; <code>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname</code></span>
         </label>
       </div>
-      <p class="attr-hint">First name + Last name are also emitted together as <code>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name</code>.</p>
 
       <div class="grid two">
         <label>Roles / groups <span class="muted">(comma separated)</span>
           <input id="roles" type="text" value="user" />
-          <span class="attr-hint">&rarr; one <code>Role</code> attribute value per group</span>
         </label>
         <label>Session duration (seconds)
           <input id="session-ttl" type="number" min="60" step="60" value="3600" />
         </label>
       </div>
+
+      <h3>Attribute mapping</h3>
+      <p class="attr-hint">These are the SAML attribute <strong>names</strong> the IdP sends. Edit a name to match what your SP expects, then use <strong>Copy</strong> to paste it into the SP's attribute mapping (e.g. Sentry's <em>IdP User ID</em>, <em>User Email</em>, <em>First name</em>, <em>Last name</em>). The <em>Value</em> column updates live as you type above.</p>
+      <div id="attr-map-list" class="map-list"></div>
 
       <h3>Additional attributes</h3>
       <p class="attr-hint"><strong>Name</strong> is the SAML attribute name your SP looks up — e.g. <code>mail</code>, <code>uid</code>, <code>urn:oid:1.2.840.113549.1.9.1</code>, or a full URI. <strong>Value</strong> is comma-split into multiple <code>&lt;AttributeValue&gt;</code>s.</p>

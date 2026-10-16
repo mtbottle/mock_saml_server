@@ -27,14 +27,29 @@ function defaultConfig() {
     sessionTtlSeconds: 3600,
     postTarget: "_self",
     idpDisplayName: "Mock SAML IdP",
+    attributeNames: {
+      identifier:
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
+      email: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+      givenname: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
+      surname: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname",
+      name: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+      role: "Role",
+    },
   };
 }
 
 function loadConfig() {
+  const def = defaultConfig();
   try {
-    return { ...defaultConfig(), ...JSON.parse(localStorage.getItem(LS_CONFIG) || "{}") };
+    const stored = JSON.parse(localStorage.getItem(LS_CONFIG) || "{}");
+    return {
+      ...def,
+      ...stored,
+      attributeNames: { ...def.attributeNames, ...(stored.attributeNames || {}) },
+    };
   } catch {
-    return defaultConfig();
+    return def;
   }
 }
 
@@ -199,8 +214,12 @@ function addAttributeRow(name = "", value = "") {
   row.innerHTML = `
     <input class="attr-name" type="text" placeholder="Attribute name (e.g. department)" value="${name.replace(/"/g, "&quot;")}" />
     <input class="attr-value" type="text" placeholder="Value(s), comma separated" value="${value.replace(/"/g, "&quot;")}" />
+    <button type="button" class="btn btn-ghost small copy-name" title="Copy attribute name">Copy</button>
     <button type="button" class="btn btn-ghost small remove" title="Remove">✕</button>`;
   row.querySelector(".remove").addEventListener("click", () => row.remove());
+  row.querySelector(".copy-name").addEventListener("click", () =>
+    copy(row.querySelector(".attr-name").value.trim())
+  );
   list.appendChild(row);
 }
 
@@ -214,6 +233,68 @@ function readAttributeRows() {
     out.push({ name, values });
   }
   return out;
+}
+
+// Fixed identity fields -> their editable SAML attribute name and live value.
+const ATTR_MAP_ROWS = [
+  { key: "identifier", label: "User ID", value: () => $("#nameid").value.trim() },
+  { key: "email", label: "Email", value: () => $("#email").value.trim() },
+  { key: "givenname", label: "First name", value: () => $("#first-name").value.trim() },
+  { key: "surname", label: "Last name", value: () => $("#last-name").value.trim() },
+  {
+    key: "name",
+    label: "Full name",
+    value: () =>
+      [$("#first-name").value.trim(), $("#last-name").value.trim()].filter(Boolean).join(" "),
+  },
+  {
+    key: "role",
+    label: "Roles / groups",
+    value: () =>
+      $("#roles")
+        .value.split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(", "),
+  },
+];
+
+function buildAttributeMap() {
+  const box = $("#attr-map-list");
+  box.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "map-row map-head";
+  head.innerHTML =
+    `<span>Field</span><span>Attribute name (editable)</span><span></span><span>Value</span>`;
+  box.appendChild(head);
+  for (const row of ATTR_MAP_ROWS) {
+    const wrap = document.createElement("div");
+    wrap.className = "map-row";
+    wrap.innerHTML =
+      `<span class="map-role">${escapeHtml(row.label)}</span>` +
+      `<input class="map-name" data-key="${row.key}" type="text" spellcheck="false" />` +
+      `<button type="button" class="btn btn-ghost small map-copy" data-key="${row.key}" title="Copy attribute name">Copy</button>` +
+      `<span class="map-value" data-value="${row.key}"></span>`;
+    box.appendChild(wrap);
+  }
+  for (const input of $$("#attr-map-list .map-name")) {
+    input.value = state.config.attributeNames[input.dataset.key] || "";
+    input.addEventListener("input", () => {
+      state.config.attributeNames[input.dataset.key] = input.value.trim();
+      saveConfig(state.config);
+    });
+  }
+  for (const btn of $$("#attr-map-list .map-copy")) {
+    btn.addEventListener("click", () => copy(state.config.attributeNames[btn.dataset.key] || ""));
+  }
+  updateAttributeMapValues();
+}
+
+function updateAttributeMapValues() {
+  for (const row of ATTR_MAP_ROWS) {
+    const el = $(`#attr-map-list .map-value[data-value="${row.key}"]`);
+    if (el) el.textContent = row.value() || "—";
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -273,17 +354,19 @@ function gatherUser() {
   const roles = $("#roles").value.split(",").map((s) => s.trim()).filter(Boolean);
 
   const attributes = {};
+  const names = state.config.attributeNames;
   const set = (name, value) => {
+    if (!name) return;
     if (value !== undefined && value !== null && value !== "" && !(Array.isArray(value) && !value.length)) {
       attributes[name] = value;
     }
   };
-  set("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", email);
-  set("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname", first);
-  set("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname", last);
-  set("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", [first, last].filter(Boolean).join(" "));
-  set("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier", $("#nameid").value.trim());
-  if (roles.length) set("Role", roles);
+  set(names.identifier, $("#nameid").value.trim());
+  set(names.email, email);
+  set(names.givenname, first);
+  set(names.surname, last);
+  set(names.name, [first, last].filter(Boolean).join(" "));
+  if (roles.length) set(names.role, roles);
   for (const { name, values } of readAttributeRows()) set(name, values.length > 1 ? values : values[0]);
 
   return {
@@ -480,6 +563,10 @@ function bindEvents() {
 
   $("#add-attribute").addEventListener("click", () => addAttributeRow());
 
+  for (const id of ["nameid", "email", "first-name", "last-name", "roles"]) {
+    $(`#${id}`).addEventListener("input", updateAttributeMapValues);
+  }
+
   $("#signin-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = $("#submit-post");
@@ -535,6 +622,7 @@ function bindEvents() {
     state.config = defaultConfig();
     saveConfig(state.config);
     fillConfigForm();
+    buildAttributeMap();
     toast("Configuration reset");
   });
 
@@ -578,6 +666,7 @@ async function init() {
   }
 
   fillConfigForm();
+  buildAttributeMap();
   addAttributeRow("department", "Engineering");
   addAttributeRow("groups", "admins, users");
 

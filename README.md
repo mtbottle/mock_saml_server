@@ -171,22 +171,35 @@ Available formats:
 
 ### Attributes
 
-These are derived from the form fields automatically:
+The **Attribute mapping** panel on the Sign in tab shows every attribute the
+IdP sends and lets you edit its **name** to match whatever your SP expects.
+Each row has a **Copy** button so you can paste the name straight into the SP's
+attribute mapping (e.g. Sentry's *IdP User ID*, *User Email*, *First name*,
+*Last name*). The *Value* column updates live as you type.
 
-| Attribute name | Source |
-| --- | --- |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` | Email |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname` | First name |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname` | Last name |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name` | First + last name |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier` | NameID |
-| `Role` | Roles (multiple values) |
+The default names are:
 
-Anything you add under **Additional attributes** is also emitted. Each row's
-value is split on commas into multiple `<AttributeValue>`s, so
-`groups = admins, users` produces two values.
+| Attribute name | Source | Editable key |
+| --- | --- | --- |
+| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` | Email | `email` |
+| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname` | First name | `givenname` |
+| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname` | Last name | `surname` |
+| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name` | First + last name | `name` |
+| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier` | NameID | `identifier` |
+| `Role` | Roles (multiple values) | `role` |
+
+Edited names are stored with the rest of the configuration in `localStorage` and
+survive reloads; **Reset to defaults** restores the table above.
+
+Anything you add under **Additional attributes** is also emitted (each row also
+has a **Copy** button for its name). Each row's value is split on commas into
+multiple `<AttributeValue>`s, so `groups = admins, users` produces two values.
 
 All attribute values are emitted as `xsi:type="xs:string"`.
+
+> The SP must map the *same* names on its side. If the names don't match, the SP
+> either sees no attributes or rejects the login (Sentry, for example, reports
+> "Failed to map SAML attributes").
 
 ### Timestamps & conditions
 
@@ -212,6 +225,10 @@ All attribute values are emitted as `xsi:type="xs:string"`.
 | **POST target** | Post into the same window (`_self`) or a new one (`_blank`). | `_self` |
 | **Sign the assertion** | Wrap the `Assertion` in an enveloped signature. | on |
 | **Sign the response** | Wrap the whole `Response` in an enveloped signature. | off |
+
+The attribute **names** emitted for the identity fields are configurable in the
+**Attribute mapping** panel (see [Attributes](#attributes)) and are stored under
+`attributeNames` in the saved configuration.
 
 At least one of *Sign the assertion* / *Sign the response* should be on for real
 SPs.
