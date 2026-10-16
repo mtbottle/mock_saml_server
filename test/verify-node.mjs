@@ -96,6 +96,30 @@ async function scenario(label, overrides, expectSigs) {
   check(`produces ${expectSigs} signature(s)`, sigCount === expectSigs, `got ${sigCount}`);
   check("base64 round-trips", S.b64decodeUtf8(result.base64) === result.xml);
 
+  if (overrides.signResponse) {
+    // SAML requires an enveloped ds:Signature right after saml:Issuer and
+    // before samlp:Status. xmldsigjs appends it last, so guard the fix.
+    const sigIdx = result.xml.indexOf("<ds:Signature");
+    const statusIdx = result.xml.indexOf("<samlp:Status");
+    check(
+      "response signature sits between Issuer and Status",
+      sigIdx > -1 && sigIdx < statusIdx,
+      `sig=${sigIdx} status=${statusIdx}`
+    );
+  }
+  if (overrides.signAssertion) {
+    // Inside the Assertion the signature must be after Issuer, before Subject.
+    const aXml = result.xml.slice(result.xml.indexOf("<saml:Assertion"));
+    const iIssuer = aXml.indexOf("<saml:Issuer>");
+    const iSig = aXml.indexOf("<ds:Signature");
+    const iSubject = aXml.indexOf("<saml:Subject>");
+    check(
+      "assertion signature sits between Issuer and Subject",
+      iSig > iIssuer && iSig < iSubject,
+      `issuer=${iIssuer} sig=${iSig} subject=${iSubject}`
+    );
+  }
+
   const self = await selfVerify(result.xml);
   check("xmldsigjs self-verifies", self.length === expectSigs && self.every((r) => r === true), JSON.stringify(self));
 

@@ -308,6 +308,37 @@ export function buildResponseXml(o) {
 
 const EXC_C14N = "http://www.w3.org/2001/10/xml-exc-c14n#";
 
+// SAML's schema requires any enveloped ds:Signature to sit directly after the
+// saml:Issuer (before Subject/Status/etc). xmldsigjs appends the signature as
+// the last child instead, which fails XSD validation, so move it into place
+// once signing is done. Moving it does not affect the digest: the enveloped
+// transform removes the signature subtree before hashing, and the SignedInfo
+// canonicalization is position-independent.
+function placeSignatureAfterIssuer(el) {
+  const sigs = el.getElementsByTagNameNS(NS.ds, "Signature");
+  let sig = null;
+  for (let i = 0; i < sigs.length; i++) {
+    if (sigs[i].parentNode === el) {
+      sig = sigs[i];
+      break;
+    }
+  }
+  if (!sig) return el;
+
+  const issuers = el.getElementsByTagNameNS(NS.saml, "Issuer");
+  let issuer = null;
+  for (let i = 0; i < issuers.length; i++) {
+    if (issuers[i].parentNode === el) {
+      issuer = issuers[i];
+      break;
+    }
+  }
+
+  const anchor = issuer ? issuer.nextSibling : el.firstChild;
+  if (anchor !== sig) el.insertBefore(sig, anchor);
+  return el;
+}
+
 async function signNode(node, signingKey, x509Base64, uri) {
   const signedXml = new xmldsig.SignedXml(node);
   // Use exclusive canonicalization for SignedInfo so the signature does not
@@ -325,7 +356,10 @@ async function signNode(node, signingKey, x509Base64, uri) {
       x509: x509Base64 ? [x509Base64] : undefined,
     }
   );
-  return signedXml.toString();
+  const signed = signedXml.toString();
+  const doc = new DOMParser().parseFromString(signed, "application/xml");
+  placeSignatureAfterIssuer(doc.documentElement);
+  return new XMLSerializer().serializeToString(doc);
 }
 
 export async function signXml(xml, signingKey, x509Base64, uri) {
