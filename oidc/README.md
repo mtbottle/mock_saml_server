@@ -6,7 +6,7 @@ and serves everything as static files, so it hosts on **GitHub Pages**.
 
 > ⚠️ **Not for production.** The bundled private key (`key.json`) is public.
 
-The issuer is `https://michtran.ca/mock_saml_server/oidc` (see `config.json`).
+The issuer is `https://mtbottle.github.io/mock_saml_server/oidc` (see `config.json`).
 
 ## Endpoints
 

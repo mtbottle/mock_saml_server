@@ -8,8 +8,7 @@ any static host.
 > ⚠️ **Not for production.** The bundled demo keys are public and are only meant
 > for integration testing.
 
-This deployment's base URL is `https://michtran.ca/mock_saml_server/`
-(`*.github.io` 301-redirects here).
+This deployment's base URL is `https://mtbottle.github.io/mock_saml_server/`.
 
 ## SAML 2.0 endpoints
 
