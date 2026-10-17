@@ -1,347 +1,110 @@
-# Mock SAML IdP
+# Mock SAML IdP & OIDC Provider
 
-A small, **fully client-side** mock SAML 2.0 Identity Provider for integration
-testing. It runs entirely in the browser (no backend), so it can be hosted as a
-static site on **GitHub Pages** or any static host.
+Two **fully client-side, static** mock identity providers for integration
+testing — a **SAML 2.0 IdP** and an **OpenID Connect provider**. They run
+entirely in the browser (no backend), so they can be hosted on GitHub Pages or
+any static host.
 
-It can:
+> ⚠️ **Not for production.** The bundled demo keys are public and are only meant
+> for integration testing.
 
-- Accept an SP-initiated `AuthnRequest` (HTTP-Redirect binding) and pick up the
-  ACS URL, issuer and `InResponseTo` automatically.
-- Show a login form that populates the identity attributes (NameID, email,
-  name, roles, custom attributes) and timestamps.
-- Generate a **signed** SAML `Response` / `Assertion` (RSA-SHA256, exclusive
-  canonicalization, enveloped signature) and POST it to the SP with the
-  HTTP-POST binding.
-- Serve **IdP metadata** (`metadata.xml`) and a self-signed **X.509 signing
-  certificate** (`idp-cert.pem`).
+This deployment's base URL is `https://michtran.ca/mock_saml_server/`
+(`*.github.io` 301-redirects here).
 
-> ⚠️ **Not for production.** The bundled demo private key is public and is only
-> meant for local integration testing.
+## SAML 2.0 endpoints
 
-## Contents
+All paths are relative to the base URL.
 
-- [Requirements](#requirements)
-- [Quick start](#quick-start)
-- [Using the app](#using-the-app)
-  - [UI at a glance](#ui-at-a-glance)
-  - [IdP-initiated login](#idp-initiated-login-start-at-the-mock-idp)
-  - [SP-initiated login](#sp-initiated-login-start-at-your-sp)
-  - [The result panel](#the-result-panel)
-- [Configuring your Service Provider](#configuring-your-service-provider)
-- [What the assertion contains](#what-the-assertion-contains)
-- [Configuration reference](#configuration-reference)
-- [Deploying to GitHub Pages](#deploying-to-github-pages)
-- [Testing](#testing)
-- [Troubleshooting](#troubleshooting)
-- [Development](#development)
-- [Project layout](#project-layout)
-
-## Requirements
-
-- A recent Chromium / Firefox / Safari (needs Web Crypto and
-  `DecompressionStream`).
-- The page must be served over `https://` or `http://localhost` — `file://`
-  will not work.
-
-## Quick start
-
-```bash
-npm install        # only needed for the dev tooling / to rebuild vendor.js
-npm run serve      # python3 -m http.server 8080  →  http://localhost:8080/
-```
-
-You do **not** need to build anything to run the app: `vendor.js` is pre-built
-and committed. `npm install` is only needed for `npm test`, `npm run build`,
-etc.
-
-Then either:
-
-- open the app, go to **Configuration**, set your SP's **ACS URL** and
-  **Audience**, and use the **Sign in** tab; or
-- start the login from your SP (SP-initiated) and let it fill those in for you.
-
-## Using the app
-
-### UI at a glance
-
-| Tab | What it's for |
-| --- | --- |
-| **Sign in** | The fake IdP login screen. Fill in the identity and POST the signed response. |
-| **Configuration** | IdP entity ID, SSO URL, default ACS/audience, signing options, TTLs. Saved to `localStorage`. |
-| **Metadata** | View / download / copy the SAML IdP metadata XML. |
-| **Certificate** | View / download / copy the signing certificate and public key; regenerate keys. |
-| **About** | Summary and security note. |
-
-Tabs are also addressable via the URL hash, e.g. `#config`, `#metadata`,
-`#certificate`.
-
-### IdP-initiated login (start at the mock IdP)
-
-1. Open the app (**Sign in** tab).
-2. Fill in the form:
-   - **NameID / Username** and **NameID Format** — the subject identifier sent
-     to the SP.
-   - **Email**, **First name**, **Last name**, **Roles** — these become
-     attributes (see [the table below](#attributes)).
-   - **Additional attributes** — free-form `name → value` pairs. Multiple values
-     are comma separated.
-   - **SP ACS URL** — where the SP expects the response to be POSTed.
-   - **Audience / SP Entity ID** — the SP's entity ID (goes in
-     `Conditions/AudienceRestriction`).
-3. Press **Sign in & POST response** to build the signed response and POST it
-   to the ACS URL, or **Generate & preview** to inspect it without leaving the
-   page.
-
-### SP-initiated login (start at your SP)
-
-1. In your SP's SAML settings, set the **IdP SSO URL** to the `/sso` endpoint
-   (e.g. `https://<owner>.github.io/<repo>/sso`).
-2. When you click "Sign in with SAML" on the SP, it redirects the browser to:
-
-   ```
-   https://<owner>.github.io/<repo>/sso?SAMLRequest=<deflate+base64>&RelayState=...
-   ```
-
-   The `/sso` page is a tiny static callback that forwards to the app
-   (`…/<repo>/`), preserving the query string — GitHub Pages can't run server
-   routes, so this is how the endpoint is mocked. The app root also accepts
-   `?SAMLRequest=…` directly.
-
-3. The app decodes the `AuthnRequest` and shows a banner with the detected
-   **SP Entity ID**, **ACS URL** and **InResponseTo**, pre-filling the form.
-4. Fill in / adjust the identity, then press **Sign in & POST response**. The
-   response is POSTed back to the ACS URL with the original `RelayState`.
-
-### The result panel
-
-After generating a response you get:
-
-- **POST to ACS** — send it again.
-- **Download XML** / **Download base64** — save the raw response.
-- **Copy base64** — copy the exact `SAMLResponse` value.
-- **Verify signature** — re-validate the signature in-browser.
-- **Toggle pretty** — switch the XML viewer between pretty and compact (display
-  only — the signed bytes never change).
-
-The compact XML shown is exactly what gets signed and posted.
-
-## Configuring your Service Provider
-
-There are two ways to wire the SP to this IdP.
-
-### Option A — use the metadata (recommended)
-
-Give the SP the metadata URL:
-
-```
-https://<owner>.github.io/<repo>/metadata.xml
-```
-
-The metadata points the SP at the `/sso` endpoint and includes the public
-signing certificate, so no separate certificate copy-paste is needed.
-
-You can also open the **Metadata** tab to preview it, **Download metadata.xml**,
-host it yourself, and point the SP at it.
-
-### Option B — configure manually
-
-Provide these values in the SP:
-
-| Setting | Value |
-| --- | --- |
-| IdP Entity ID / Issuer | The page base URL, e.g. `https://<owner>.github.io/<repo>/` (or whatever you set in **Configuration**). |
-| IdP SSO URL | The `/sso` endpoint, e.g. `https://<owner>.github.io/<repo>/sso` |
-| IdP Certificate | The PEM from the **Certificate** tab (or `idp-cert.pem`). |
-| ACS URL | Your SP's assertion consumer endpoint (entered in the app). |
-| Audience / SP Entity ID | Your SP's entity ID (entered in the app). |
-
-The **IdP Entity ID** and **SSO URL** must match what the SP expects, otherwise
-the SP will reject the response as coming from the wrong issuer.
-
-## What the assertion contains
-
-### NameID
-
-The value you type in **NameID / Username**, with the selected **NameID Format**.
-Available formats:
-
-`persistent` (default), `transient`, `emailAddress`, `unspecified`, `entity`,
-`kerberos`, `WindowsDomainQualifiedName`.
-
-### Attributes
-
-The **Attribute mapping** panel on the Sign in tab shows every attribute the
-IdP sends and lets you edit its **name** to match whatever your SP expects.
-Each row has a **Copy** button so you can paste the name straight into the SP's
-attribute mapping (e.g. Sentry's *IdP User ID*, *User Email*, *First name*,
-*Last name*). The *Value* column updates live as you type.
-
-The default names are:
-
-| Attribute name | Source | Editable key |
+| Method | Path | Role |
 | --- | --- | --- |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` | Email | `email` |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname` | First name | `givenname` |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname` | Last name | `surname` |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name` | First + last name | `name` |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier` | NameID | `identifier` |
-| `Role` | Roles (multiple values) | `role` |
+| `GET` | `/` | IdP login screen; builds and POSTs the signed response. Also accepts an inbound `?SAMLRequest=` in the browser. |
+| `GET` | `/sso?SAMLRequest=…&RelayState=…` | The **SSO endpoint** advertised in metadata. A tiny static page that forwards to the app, preserving the query string (GitHub Pages can't run server routes). |
+| `GET` | `/metadata.xml` | IdP metadata (`md:EntityDescriptor`). |
+| `GET` | `/idp-cert.pem` | The X.509 signing certificate (PEM). |
+| `POST` (external) | SP **ACS URL** | Outbound. The browser POSTs the `SAMLResponse` here (HTTP-POST binding). |
 
-Edited names are stored with the rest of the configuration in `localStorage` and
-survive reloads; **Reset to defaults** restores the table above.
+## OpenID Connect endpoints
 
-Anything you add under **Additional attributes** is also emitted (each row also
-has a **Copy** button for its name). Each row's value is split on commas into
-multiple `<AttributeValue>`s, so `groups = admins, users` produces two values.
+All paths are under `/oidc/`.
 
-All attribute values are emitted as `xsi:type="xs:string"`.
-
-> The SP must map the *same* names on its side. If the names don't match, the SP
-> either sees no attributes or rejects the login (Sentry, for example, reports
-> "Failed to map SAML attributes").
-
-### Timestamps & conditions
-
-- `IssueInstant` = now.
-- `Conditions/@NotBefore` = now − 5s, `@NotOnOrAfter` = now + **Assertion TTL**.
-- `SubjectConfirmationData/@NotOnOrAfter` = now + **Assertion TTL**, with
-  `Recipient` = ACS URL and `InResponseTo` from the request (when present).
-- `AuthnStatement/@SessionNotOnOrAfter` = now + **Session TTL**.
-
-## Configuration reference
-
-| Field | Meaning | Default |
+| Method | Path | Role |
 | --- | --- | --- |
-| **IdP Entity ID** | Issuer / entityID of this IdP. | page URL |
-| **IdP SSO URL** | SSO endpoint advertised in metadata (`/sso` callback). | page URL + `sso` |
-| **Default ACS URL** | Where to POST if the request/field doesn't specify one. | empty |
-| **Default Audience / SP Entity ID** | Default audience/issuer expected by the SP. | empty |
-| **NameID Format** | Default NameID format. | `persistent` |
-| **AuthnContext Class** | `AuthnContextClassRef` value. | `PasswordProtectedTransport` |
-| **Display name** | Optional organization name in metadata. | `Mock SAML IdP` |
-| **Assertion TTL (s)** | Lifetime of the assertion/conditions. | `300` |
-| **Session TTL (s)** | `SessionNotOnOrAfter`. | `3600` |
-| **POST target** | Post into the same window (`_self`) or a new one (`_blank`). | `_self` |
-| **Sign the assertion** | Wrap the `Assertion` in an enveloped signature. | on |
-| **Sign the response** | Wrap the whole `Response` in an enveloped signature. | off |
+| `GET` | `/oidc/.well-known/openid-configuration` | Discovery document. |
+| `GET` | `/oidc/openid-configuration.json` | Same document, served with an explicit JSON filename. |
+| `GET` | `/oidc/jwks.json` | JSON Web Key Set (RS256 public key). |
+| `GET` | `/oidc/authorize` | Authorization endpoint (implicit). |
+| `GET` | `/oidc/` | Landing page / in-browser token generator. |
 
-The attribute **names** emitted for the identity fields are configurable in the
-**Attribute mapping** panel (see [Attributes](#attributes)) and are stored under
-`attributeNames` in the saved configuration.
+## SAML 2.0 spec support
 
-At least one of *Sign the assertion* / *Sign the response* should be on for real
-SPs.
+### Implemented
 
-## Deploying to GitHub Pages
+- **Bindings** — HTTP-Redirect (consuming the `AuthnRequest`, deflate + base64)
+  and HTTP-POST (producing the `Response`).
+- **Profiles** — Web Browser SSO, both **SP-initiated** and **IdP-initiated**.
+- **`AuthnRequest` (parsed)** — `ID`, `AssertionConsumerServiceURL`,
+  `Destination`, `ProtocolBinding`, `IssueInstant`, `Issuer`,
+  `NameIDPolicy/@Format`, `ForceAuthn`, `IsPassive`,
+  `RequestedAuthnContext/@Comparison`.
+- **`Response`** — `Version`, `ID`, `IssueInstant`, `Destination`,
+  `InResponseTo`, `Issuer`, `Status/StatusCode = Success`.
+- **`Assertion`** — `Issuer`; `Subject/NameID` (with `Format`,
+  `SPNameQualifier`); `SubjectConfirmation` (bearer) with
+  `SubjectConfirmationData` (`InResponseTo`, `NotOnOrAfter`, `Recipient`,
+  `NotBefore`, `Address`); `Conditions` (`NotBefore`, `NotOnOrAfter`) +
+  `AudienceRestriction`; `AuthnStatement` (`AuthnInstant`, `SessionIndex`,
+  `SessionNotOnOrAfter`, `AuthnContextClassRef`); `AttributeStatement`.
+- **NameID formats** — `persistent` (default), `transient`, `emailAddress`,
+  `unspecified`, `entity`, `kerberos`, `WindowsDomainQualifiedName`.
+- **AuthnContext classes** — `PasswordProtectedTransport` (default),
+  `Password`, `unspecified`, `X509`, `Kerberos`.
+- **Attributes** — `NameFormat` `…:attrname-format:basic`, optional
+  `FriendlyName`, multiple `<AttributeValue>`s, values typed `xs:string`.
+- **Signatures** — enveloped `ds:Signature`, `rsa-sha256`
+  (RSASSA-PKCS1-v1_5 / SHA-256), SHA-256 digests, **exclusive** C14N
+  (`xml-exc-c14n`). The assertion and/or the response can be signed.
+- **Metadata** — `EntityDescriptor` (`entityID`, `validUntil`);
+  `IDPSSODescriptor` (`protocolSupportEnumeration`, `WantAuthnRequestsSigned`);
+  `KeyDescriptor use="signing"`; all `NameIDFormat`s; `SingleSignOnService`
+  (redirect + post); `Organization`.
+- **Keys** — RSA-2048 / SHA-256 self-signed X.509 certificate.
 
-Everything needed at runtime is static and committed (including the pre-built
-`vendor.js`), so you publish the repo root directly:
+### Not implemented
 
-1. Push to `main`.
-2. **Settings → Pages → Build and deployment → Source = "Deploy from a branch"**,
-   then select **Branch: `main`** and **Folder: `/ (root)`** and save.
+- `AuthnRequest` signature verification (`WantAuthnRequestsSigned` is advisory
+  only — advertise it only if your SP allows unsigned requests).
+- HTTP-POST and HTTP-Artifact bindings for the `AuthnRequest` (Redirect only).
+- Single Logout (SLO), `LogoutRequest`/`LogoutResponse`.
+- Attribute/assertion query profiles.
+- Encrypted assertions/attributes.
 
-The `.nojekyll` file is included so the files are served as-is. After a minute
-the site is at `https://<owner>.github.io/<repo>/`.
+## OpenID Connect spec support
 
-A ready-to-serve `metadata.xml` (and `idp-cert.pem`) for this project's Pages
-URL is committed, so you can point your SP at:
+### Implemented
 
-```
-https://michtran.ca/mock_saml_server/metadata.xml
-```
+- **Discovery** (`/.well-known/openid-configuration`) and **JWKS**.
+- **OAuth 2.0 implicit flow only** — `response_type=id_token` and
+  `id_token token`.
+- **`response_mode`** — `fragment` (default), `query`, `form_post`.
+- **Scopes** — `openid` (required), `profile`, `email`, `groups`.
+- **`id_token` claims** — `iss`, `sub`, `aud`, `exp`, `iat`, `auth_time`,
+  `nonce`; `profile` → `name`, `given_name`, `family_name`,
+  `preferred_username`, `groups`; `email` → `email`, `email_verified`.
+- **`access_token`** — JWT when `token` is requested; `token_type=Bearer`,
+  `expires_in`.
+- **Signing** — RS256 (RSASSA-PKCS1-v1_5 / SHA-256); public key published at
+  `/oidc/jwks.json`, so the `id_token` verifies against discovery.
+- **Validation** — requires the `openid` scope; rejects `response_type=code`;
+  echoes `state`; passes through `nonce`.
 
-> **Custom domain:** if the GitHub account (or repo) uses a custom domain,
-> `*.github.io` 301-redirects to it. The IdP's entity ID/issuer is derived from
-> the URL the app is actually loaded from, so the metadata must advertise the
-> **canonical (redirect target) domain** — here `michtran.ca` — or SPs that
-> validate the issuer (most do, Sentry included) will reject the response.
+### Not implemented (needs a server / back channel)
 
-The app's default **IdP Entity ID** (the page URL) and **SSO URL** (the page URL
-+ `sso`) are derived from its own location, so they match the committed metadata
-out of the box.
+- **Authorization-code flow** — there is **no `token_endpoint`**, so no code
+  exchange and no PKCE. A static host cannot accept the server-to-server token
+  request, which is why this is implicit-only.
+- Refresh tokens, UserInfo endpoint, token introspection, token revocation.
+- Request objects (`request` / `request_uri`), dynamic client registration.
+- Encrypted tokens (JWE) — the `id_token` is signed (JWS) only.
 
-If you rename the repo, move it to a different owner, serve it from a custom
-domain, or change domains, regenerate the metadata for the canonical URL:
-
-```bash
-SSO_URL=https://new-url/sso IDP_ENTITY_ID=https://new-url/ npm run gen:metadata
-```
-
-> Prefer GitHub Actions instead of branch deploy? Add `.github/workflows/`
-> back and enable **Source = "GitHub Actions"** — Pages must be enabled in the
-> repo settings first (the workflow cannot create the Pages site on its own).
-
-## Testing
-
-```bash
-npm test
-```
-
-Runs a Node harness that exercises the same `saml.js` used in the browser and
-verifies every scenario (assertion-only, response-only, both, unsigned) with two
-independent implementations — `xmldsigjs` and `xml-crypto` — plus metadata and
-`AuthnRequest` parsing/decoding.
-
-There is also a browser self-test at `test/browser-selftest.html` — open it while
-running `npm run serve`.
-
-## Troubleshooting
-
-| Symptom | Likely cause / fix |
-| --- | --- |
-| SP reports **invalid signature** | The SP is configured with a different certificate than the one signing. Copy the cert from the **Certificate** tab again, or re-download metadata. If you regenerated keys, update the SP. |
-| SP reports **audience / recipient mismatch** | Set **Audience / SP Entity ID** and **ACS URL** to exactly what the SP expects. SP-initiated flows fill these in automatically. |
-| SP reports **issuer mismatch** | Set **IdP Entity ID** to the value the SP is configured with. |
-| SP reports **assertion expired / not yet valid** | Clock skew between machines, or a very small **Assertion TTL**. Increase the TTL, ensure clocks are synced. |
-| **Nothing happens on POST** | Check the **ACS URL** is correct and reachable; a popup blocker may block a `_blank` target — switch **POST target** to `_self`. |
-| App shows a **warning banner** | You're on `file://` or a non-secure origin, or the browser lacks Web Crypto / `DecompressionStream`. Serve over `https://` or `http://localhost`. |
-| **Incoming SAMLRequest can't be parsed** | Some SPs POST the `AuthnRequest` instead of redirecting; this tool handles the HTTP-Redirect (deflate) binding only. |
-| SP requires a **signed AuthnRequest** | This IdP does not verify AuthnRequest signatures; only advertise it if your SP allows unsigned requests. |
-
-## Development
-
-```bash
-npm install
-npm run build          # rebuild vendor.js (xmldsigjs + @peculiar/x509) from src/vendor-entry.js
-npm test               # verify generated signatures (xmldsigjs + independent xml-crypto)
-npm run gen:key        # regenerate the bundled demo key/cert
-npm run gen:metadata   # emit metadata.xml + idp-cert.pem for a given SSO_URL
-npm run serve          # static file server on :8080
-```
-
-`vendor.js` is pre-built and committed so the site needs no build step to run.
-`npm run build` regenerates it after dependency changes.
-
-### How signing works
-
-Signatures are produced with
-[xmldsigjs](https://github.com/PeculiarVentures/xmldsigjs) on top of Web Crypto,
-and certificates with
-[@peculiar/x509](https://github.com/PeculiarVentures/x509). The `SignedInfo` is
-canonicalized with **exclusive** C14N so the signature does not depend on
-namespaces inherited from an ancestor element (this matters when signing a
-nested `Assertion`). References use the enveloped-signature + exclusive-C14N
-transforms.
-
-### Bundled demo key
-
-`idp-key.json` holds a throwaway RSA-2048 key + self-signed certificate used by
-default, so `metadata.xml` / `idp-cert.pem` are stable. In the app you can
-**Regenerate key pair** (stored in `localStorage`) and later **Use bundled demo
-key** to switch back. Regenerate the committed key with `npm run gen:key`.
-
-## Project layout
-
-```
-index.html          UI
-sso/index.html      /sso callback endpoint (forwards to the app)
-styles.css          styles
-app.js              UI logic, routing, HTTP-POST
-saml.js             SAML XML building, signing, metadata, AuthnRequest parsing
-vendor.js           pre-built bundle of xmldsigjs + @peculiar/x509
-src/vendor-entry.js bundle entry point
-scripts/            key + static metadata generators
-test/               Node verification harness + browser self-test
-```
+> OIDC endpoints and claims are described in more detail in
+> [`oidc/README.md`](oidc/README.md).
