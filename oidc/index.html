@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mock OIDC Provider</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; max-width: 860px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.05rem; margin-top: 1.8rem; }
+  code { background: color-mix(in srgb, currentColor 10%, transparent); padding: .1rem .3rem; border-radius: 4px; }
+  textarea { width: 100%; min-height: 8rem; font: inherit; padding: .5rem; box-sizing: border-box; }
+  table { border-collapse: collapse; }
+  td { padding: .2rem .8rem .2rem 0; vertical-align: top; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .5rem 1rem; margin: .5rem 0; }
+  label { display: flex; flex-direction: column; font-size: .85rem; gap: .2rem; }
+  input { font: inherit; padding: .35rem .5rem; }
+  button, .btn { font: inherit; padding: .45rem .9rem; border-radius: 6px; border: 1px solid color-mix(in srgb, currentColor 30%, transparent); background: transparent; cursor: pointer; color: inherit; text-decoration: none; display: inline-block; }
+  .muted { opacity: .7; }
+  .card { border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 8px; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .warn { border-color: #c0392b; }
+</style>
+</head>
+<body>
+<h1>Mock OIDC Provider</h1>
+<p>A fully static, client-side <strong>OpenID Connect</strong> mock for integration testing.
+Like the mock SAML IdP, it needs no backend — host it on GitHub Pages and point your app at it.</p>
+
+<div class="card warn">
+  <strong>Implicit flow only.</strong>
+  <p class="muted" style="margin:.4rem 0 0">
+    A static host cannot accept the server-to-server <code>POST /token</code> that the
+    authorization-code flow requires, so this mock implements the OAuth 2.0
+    <strong>implicit flow</strong>: it signs an <code>id_token</code> in the browser and returns it via the
+    redirect fragment (<code>response_type=id_token</code> or <code>id_token token</code>).
+    It works with SPAs / clients that accept implicit responses, but not with confidential
+    server-side SPs (e.g. Sentry) that exchange a code at a token endpoint.
+  </p>
+</div>
+
+<h2>Endpoints</h2>
+<table>
+  <tr><td>Issuer</td><td><code id="issuer">…</code></td></tr>
+  <tr><td>Discovery</td><td><a id="discovery" href="#"></a> (also <a href="openid-configuration.json"><code>openid-configuration.json</code></a>)</td></tr>
+  <tr><td>JWKS</td><td><a href="jwks.json"><code>jwks.json</code></a></td></tr>
+  <tr><td>Authorize</td><td><code id="authorize">…</code></td></tr>
+  <tr><td>Signing key</td><td><code id="kid">…</code> (RSA-2048 / RS256, throwaway)</td></tr>
+</table>
+
+<h2>Try the authorize endpoint</h2>
+<p class="muted">Opens a new tab as if a client redirected the browser to the IdP. You’ll be
+“logged in” instantly and sent back to <code>redirect_uri</code> with the tokens in the URL fragment.</p>
+<div class="grid">
+  <label>client_id <input id="c-client" value="mock-client" /></label>
+  <label>redirect_uri <input id="c-redirect" value="https://oauthdebugger.com/debug" /></label>
+  <label>scope <input id="c-scope" value="openid profile email" /></label>
+  <label>nonce <input id="c-nonce" value="nonce-123" /></label>
+</div>
+<p><a id="try" class="btn" href="#" target="_blank" rel="noopener">Open /authorize ↗</a></p>
+
+<h2>Or mint an id_token directly</h2>
+<p class="muted">Signs a token in your browser with the bundled demo key.</p>
+<div class="grid">
+  <label>sub <input id="u-sub" value="user-1" /></label>
+  <label>email <input id="u-email" value="user@example.com" /></label>
+  <label>name <input id="u-name" value="Ada Lovelace" /></label>
+  <label>groups (comma separated) <input id="u-groups" value="users,admins" /></label>
+</div>
+<p><button id="mint">Generate id_token</button></p>
+<div id="out"></div>
+
+<script type="module">
+import {
+  importPrivateJwk, signJwt, unb64url,
+  buildIdTokenPayload, normalizeScope, loadJson,
+} from "./oidc.js";
+
+const config = await loadJson(new URL("./config.json", import.meta.url));
+const key = await loadJson(new URL("./key.json", import.meta.url));
+const issuer = config.issuer;
+
+document.getElementById("issuer").textContent = issuer;
+const disc = document.getElementById("discovery");
+disc.href = ".well-known/openid-configuration";
+disc.textContent = ".well-known/openid-configuration";
+document.getElementById("authorize").textContent = `${issuer}/authorize`;
+document.getElementById("kid").textContent = key.kid;
+
+function authorizeUrl() {
+  const p = new URLSearchParams({
+    response_type: "id_token token",
+    client_id: document.getElementById("c-client").value,
+    redirect_uri: document.getElementById("c-redirect").value,
+    scope: document.getElementById("c-scope").value,
+    nonce: document.getElementById("c-nonce").value,
+    state: "state-" + Math.random().toString(36).slice(2, 8),
+  });
+  return `${issuer}/authorize?${p}`;
+}
+function refreshTry() {
+  document.getElementById("try").href = authorizeUrl();
+}
+for (const id of ["c-client", "c-redirect", "c-scope", "c-nonce"]) {
+  document.getElementById(id).addEventListener("input", refreshTry);
+}
+refreshTry();
+
+document.getElementById("mint").addEventListener("click", async () => {
+  const user = {
+    sub: document.getElementById("u-sub").value,
+    email: document.getElementById("u-email").value,
+    name: document.getElementById("u-name").value,
+    given_name: document.getElementById("u-name").value.split(" ")[0],
+    family_name: document.getElementById("u-name").value.split(" ").slice(1).join(" "),
+    groups: document.getElementById("u-groups").value.split(",").map((s) => s.trim()).filter(Boolean),
+  };
+  const scope = normalizeScope(document.getElementById("c-scope").value);
+  const privateKey = await importPrivateJwk(key.privateJwk);
+  const token = await signJwt(
+    buildIdTokenPayload({ issuer, clientId: document.getElementById("c-client").value, user, scope, nonce: document.getElementById("c-nonce").value, ttlSeconds: Number(config.idTokenTtl) }),
+    privateKey,
+    key.kid
+  );
+  document.getElementById("out").innerHTML = `
+    <h3>id_token</h3>
+    <textarea readonly>${token}</textarea>
+    <h3>Decoded claims</h3>
+    <textarea readonly>${JSON.stringify(JSON.parse(unb64url(token.split(".")[1])), null, 2)}</textarea>`;
+});
+</script>
+</body>
+</html>

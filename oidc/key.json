@@ -1,0 +1,25 @@
+{
+  "kid": "4vq9XneuCCaZD_qNnhgq7NNCzncaIA2i_PWY5D_uRPk",
+  "privateJwk": {
+    "kty": "RSA",
+    "n": "rMEVRTp0m-3tDMVCdzDupfF5xoWZRpSzO8ZfmEeWNXqPLC2MZJ-TfMSeKR0Vs7y5N-CE8xkPqwxipXFJxM8eBOZnPDnkg9AEgMbCrNvxBjDjZpXHW80fxjkf-Cf3xTJfkT_saMFQNqxRZBIBDI-HZFmGIePcrNPqSXRA6ECSppleRGjsFGzKNvoOCEE7LZ9y-Nqh0PpkyGzXpsHHTStvLsUmYOthuE7vR7s5EZIxrvHxS1ac03PnnSesiq9AVoSQUfrXwVkBdqwN2mewAz5rkvpD4sRsus8IRZsk9TRXDJ7N3IDjIPKgit1wEH1_8oSCeTzIkY_wPcHG1oK_YlHgHw",
+    "e": "AQAB",
+    "d": "DZZQGHZNBpiTfN4k6J_6HSYdaE5IrGL0p95l1WHIACPID_bzJFTisjz6nYwykUTmIm1vt3kAoPjj51Q-M5MAruz6MKPzA6UAPaqkVBkmX1DICeD84Y0EE0CZ8ZgfJizclF19OA4AQ5SRADhkSbseMHfUE2VLDXLLagSROFMf1ad4SJh4YhRXOFcQsqNH4zqsrF5lkh6zj1xrUqMyAs1OVRIW2wjBFLxQfv_GULHEHdNlPW17bp8Epg1eBVn7XF-LkLkJCy9OnRiH8H9wPHaEZkeKWXbNFeELHtfBF7EUikQAclJByoXRR3BYEw7PeOC91ItIeEW-749hwqP9RpXkGQ",
+    "p": "2MZk2g2sOOmZrgOasVsyVOU69YC2fWqrzJApQAZd6l16o7xEpRj1bBNXVmoWh0J81ShyzLA1hxShGl75g3m4kQbxa6s3B5Qvrw6F2jVnVNCBmVm2-lHLkmlIuBm3CiHB8gYgvM_23bx9j2XU4pwexvWJSczTk9hrhO5y8npe7Ec",
+    "q": "zAOHT-gsDafA0sKFrvidpTbCKy7NV_qylOHGnEj_Rt28cj9aeE7r_SrKk-L0CgADOVkpv7F817oEMiHG1j-pD4uSaSuLv5t1CvwWpIQfzkh_Cq_u2cE80uoPh3sOPLvzpQQCBzydgYh9QQWzcK3SlqxlcgbOCAyFAF84p4Eb0Wk",
+    "dp": "hifqHGTf0-0GNgJ3BxIoiQ_AuFUrG10b66LAVKZcEwI9Nv36Aa77nCIwKAPJ43XLaeP5gCIBTpL-zSJACxUWm3KPkJHKob8c75ruTchFJeFQg4ZZTnu2n-rWnVEUzYlszQrr0c5mun2_uzJLWN9D0N_-UhUYT-RdTkyACP6gpls",
+    "dq": "x-0tTUFY6ojaja_TEgTReHaREYBr-yvSldQrrjxa7jed1NgA8KVm3lJw8zwVqzcX8btPDmwAy-ee9QHkuVDpfDJq6GWkLcFKkdk410AjayPgW7jNeNfFo2t8jGgrK5mEytGCq1TbhXUcSfwsPOAa301SnMvOXFTogdTO0FfVywE",
+    "qi": "gL_8EGgHrPbCY6PS8Qj_Q-74C5AKr4yQrh4WQUnC5wk0cj76n9SPdCyXf5CK8g445A2l5MFZ2CpF-vrupGyDGCtpDdZDkPkmzBaZ3mv8-dBMV80RSEBqsbMG-S1Lm1EbPgb227Jqdq1E9bEmTAAQr1ub9IWitbHZKY7vuupnql4",
+    "kid": "4vq9XneuCCaZD_qNnhgq7NNCzncaIA2i_PWY5D_uRPk",
+    "use": "sig",
+    "alg": "RS256"
+  },
+  "publicJwk": {
+    "kty": "RSA",
+    "n": "rMEVRTp0m-3tDMVCdzDupfF5xoWZRpSzO8ZfmEeWNXqPLC2MZJ-TfMSeKR0Vs7y5N-CE8xkPqwxipXFJxM8eBOZnPDnkg9AEgMbCrNvxBjDjZpXHW80fxjkf-Cf3xTJfkT_saMFQNqxRZBIBDI-HZFmGIePcrNPqSXRA6ECSppleRGjsFGzKNvoOCEE7LZ9y-Nqh0PpkyGzXpsHHTStvLsUmYOthuE7vR7s5EZIxrvHxS1ac03PnnSesiq9AVoSQUfrXwVkBdqwN2mewAz5rkvpD4sRsus8IRZsk9TRXDJ7N3IDjIPKgit1wEH1_8oSCeTzIkY_wPcHG1oK_YlHgHw",
+    "e": "AQAB",
+    "kid": "4vq9XneuCCaZD_qNnhgq7NNCzncaIA2i_PWY5D_uRPk",
+    "use": "sig",
+    "alg": "RS256"
+  }
+}

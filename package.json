@@ -9,7 +9,9 @@
     "build:dev": "esbuild src/vendor-entry.js --bundle --format=esm --target=es2020 --outfile=vendor.js",
     "gen:key": "node scripts/gen-idp-key.mjs",
     "gen:metadata": "node scripts/gen-static.mjs",
+    "gen:oidc": "node scripts/gen-oidc-key.mjs && node scripts/gen-oidc-config.mjs",
     "test": "node test/verify-node.mjs",
+    "oidc:test": "node oidc/test.mjs",
     "serve": "python3 -m http.server 8080"
   },
   "dependencies": {

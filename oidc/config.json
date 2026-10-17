@@ -1,0 +1,5 @@
+{
+  "issuer": "https://michtran.ca/mock_saml_server/oidc",
+  "defaultClientId": "mock-client",
+  "idTokenTtl": 3600
+}
